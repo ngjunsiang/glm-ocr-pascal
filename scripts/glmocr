@@ -55,8 +55,21 @@ def main():
         print(f"glmocr: server returned HTTP {e.code}: {e.read().decode(errors='replace')[:300]}",
               file=sys.stderr)
         return 1
-    except (urllib.error.URLError, TimeoutError) as e:
-        print(f"glmocr: cannot reach ollama at {args.host}: {e}", file=sys.stderr)
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        reason = getattr(e, "reason", e)
+        refused = isinstance(reason, ConnectionRefusedError) or "Connection refused" in str(reason)
+        if refused:
+            print(f"glmocr: ollama is not reachable at {args.host} — the server is not running.",
+                  file=sys.stderr)
+            print("Start it with one of:", file=sys.stderr)
+            print("  systemctl --user start ollama     # user-space ollama (tarball installs)",
+                  file=sys.stderr)
+            print("  sudo systemctl start ollama       # system ollama (repo package)",
+                  file=sys.stderr)
+            print("and make it persistent with:  systemctl --user enable --now ollama",
+                  file=sys.stderr)
+        else:
+            print(f"glmocr: cannot reach ollama at {args.host}: {e}", file=sys.stderr)
         return 1
 
     text = (resp.get("message") or {}).get("content", "")
