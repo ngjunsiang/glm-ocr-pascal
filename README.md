@@ -23,7 +23,7 @@ Key facts behind the numbers:
 ## Requirements
 
 - Any Linux distro running a Pascal (sm_61) NVIDIA GPU, with ~1.9 GB free VRAM
-- [Ollama](https://ollama.com) — official tarball (≥ 0.40) or repo package
+- [Ollama](https://ollama.com) — the official tarball bundles the sm_61-capable `cuda_v12` runner and is the **verified fastest path**. Arch users: AUR `ollama-bin` is the same tarball; the repo's `ollama-cuda` package does **not** support Pascal (CUDA 13 build), and `ollama-vulkan` works at roughly half speed
 - **The legacy 580 driver branch** — the last driver line supporting Pascal (mainline `nvidia` ≥ 590 dropped it, and CUDA ≥ 13 dropped sm_61 entirely). Install the 580-legacy package your distro ships; Arch users: `nvidia-580xx-utils` + `nvidia-580xx-dkms` from the AUR plus `linux-headers`
 
 ## Setup
