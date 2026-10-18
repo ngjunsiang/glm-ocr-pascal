@@ -22,16 +22,18 @@ Key facts behind the numbers:
 
 ## Requirements
 
-- Arch Linux (or derivative) with a Pascal (sm_61) NVIDIA GPU, any VRAM ≥ ~1.9 GB free
+- Any Linux distro running a Pascal (sm_61) NVIDIA GPU, with ~1.9 GB free VRAM
 - [Ollama](https://ollama.com) — official tarball (≥ 0.40) or repo package
-- `nvidia-580xx-utils` + `nvidia-580xx-dkms` (AUR) and `linux-headers` — **the legacy 580 branch is the last driver line supporting Pascal**; mainline `nvidia` (≥ 590) dropped it, and CUDA ≥ 13 dropped sm_61 entirely
+- **The legacy 580 driver branch** — the last driver line supporting Pascal (mainline `nvidia` ≥ 590 dropped it, and CUDA ≥ 13 dropped sm_61 entirely). Install the 580-legacy package your distro ships; Arch users: `nvidia-580xx-utils` + `nvidia-580xx-dkms` from the AUR plus `linux-headers`
 
 ## Setup
 
 ### 1. Driver (one-time, needs sudo)
 
 ```bash
+# Arch (AUR) — validated on this setup:
 paru -S nvidia-580xx-utils nvidia-580xx-dkms linux-headers
+# Other distros: install their 580-legacy driver package, or NVIDIA's 580-series .run installer.
 
 # keep nouveau off, load compute modules at boot, then verify:
 printf 'blacklist nouveau\noptions nouveau modeset=0\n' | sudo tee /etc/modprobe.d/nouveau-off.conf
@@ -40,6 +42,7 @@ sudo modprobe nvidia nvidia_uvm && nvidia-smi
 ```
 
 Graphics can stay on the iGPU: never load `nvidia_drm`/`nvidia_modeset`, no X/Wayland config changes.
+The remaining steps (Ollama, systemd, Python) are distro-agnostic.
 
 ### 2. Model
 
