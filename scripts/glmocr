@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+"""OCR an image with GLM-OCR through a local Ollama server.
+
+Usage:
+  glmocr IMAGE [PROMPT] [options]
+
+Prints the transcription to stdout. Designed for scripted/agent use: one
+argument in, text out, nonzero exit on any failure.
+
+Environment:
+  OLLAMA_HOST_URL   server URL   (default http://127.0.0.1:11434)
+  GLMOCR_MODEL      model tag    (default glm-ocr:q8_0)
+"""
+import argparse
+import base64
+import json
+import os
+import sys
+import time
+import urllib.request
+
+
+def main():
+    ap = argparse.ArgumentParser(description="OCR an image via GLM-OCR on Ollama")
+    ap.add_argument("image", help="path to the image (png/jpg)")
+    ap.add_argument("prompt", nargs="?", default="Text Recognition:",
+                    help="instruction for the model (default: full transcription)")
+    ap.add_argument("--host", default=os.environ.get("OLLAMA_HOST_URL", "http://127.0.0.1:11434"))
+    ap.add_argument("--model", default=os.environ.get("GLMOCR_MODEL", "glm-ocr:q8_0"))
+    ap.add_argument("--json", action="store_true", help="print a JSON record instead of plain text")
+    ap.add_argument("--out", help="also write the transcription to this file")
+    args = ap.parse_args()
+
+    try:
+        image_b64 = base64.b64encode(open(args.image, "rb").read()).decode()
+    except OSError as e:
+        print(f"glmocr: cannot read image: {e}", file=sys.stderr)
+        return 2
+
+    payload = {
+        "model": args.model, "stream": False,
+        "messages": [{"role": "user", "content": args.prompt,
+                      "images": [image_b64]}],
+        "options": {"num_ctx": 16384, "num_predict": 4096},
+    }
+    req = urllib.request.Request(
+        args.host.rstrip("/") + "/api/chat",
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json", "Authorization": "Bearer ollama"})
+    t0 = time.time()
+    try:
+        with urllib.request.urlopen(req, timeout=1800) as r:
+            resp = json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        print(f"glmocr: server returned HTTP {e.code}: {e.read().decode(errors='replace')[:300]}",
+              file=sys.stderr)
+        return 1
+    except (urllib.error.URLError, TimeoutError) as e:
+        print(f"glmocr: cannot reach ollama at {args.host}: {e}", file=sys.stderr)
+        return 1
+
+    text = (resp.get("message") or {}).get("content", "")
+    if args.out:
+        with open(args.out, "w") as fh:
+            fh.write(text + "\n")
+
+    if args.json:
+        print(json.dumps({
+            "image": args.image, "model": args.model, "prompt": args.prompt,
+            "total_seconds": round(time.time() - t0, 2),
+            "eval_count": resp.get("eval_count"),
+            "eval_tok_s": round(resp["eval_count"] / (resp["eval_duration"] / 1e9), 2)
+                          if resp.get("eval_duration") else None,
+            "text": text,
+        }, ensure_ascii=False))
+    else:
+        print(text)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

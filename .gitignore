@@ -1,0 +1,14 @@
+# build trees and vendored sources (local working state — never published)
+build/
+build-vk/
+third_party/
+spirv-usr/
+aur/
+
+# model weights (pulled data — see README "Model" section)
+models/*.gguf
+models/*.bin
+
+# runtime logs
+*.log
+results/
